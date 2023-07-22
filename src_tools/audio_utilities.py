@@ -223,12 +223,15 @@ def plot_mel_specgram(waveform, sample_rate=16000, title="Mel Spectrogram",xlabe
     )
 
     melspec = mel_spectrogram(waveform)
+    melspec_dB = 10*np.log10(melspec[0]) #10*log10 of PSD, since PSD is power
+    #melspec_dB = torchTransforms.AmplitudeToDB(top_db=80)(melspec) #another option is to use this
+
 
     num_channels, num_frames = waveform.shape
     #figure, axes = plt.subplots(num_channels, 1) #to do: more than 1 channel audio
     figure, axes = plt.subplots(1, 1)
     
-    plt.imshow(10*np.log10(melspec[0]), origin="lower", aspect="auto")
+    plt.imshow(melspec_dB, origin="lower", aspect="auto")
     figure.suptitle(title)
     axes.set_ylabel(ylabel)
     axes.set_xlabel(xlabel)
@@ -268,6 +271,7 @@ def plot_mel_specgram_vs_time(waveform, sample_rate=16000, title="Mel Spectrogra
 
     melspec = mel_spectrogram(waveform)
     melspec_dB = 10*np.log10(melspec[0]) #10*log10 of PSD, since PSD is power
+    #melspec_dB = torchTransforms.AmplitudeToDB(top_db=80)(melspec) #another option is to use this
 
 
     n_mel_freq_bins = melspec.shape[1] #number of mel-frequency bins
