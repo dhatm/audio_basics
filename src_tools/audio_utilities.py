@@ -173,7 +173,9 @@ def plot_specgram_experimental(waveform, sample_rate=16000, title="Spectrogram",
 #----------------------------------------------------------
 # plot_mel_specgram
 #
-# Description: displays mel-scale frequency vs time mel-spectrogram of audio waveform (i.e. a short-time fourier transform where frequencies are converted to the mel scale. Mel Scale is a logarithmic transformation of a signal's frequency. This better mimics filtering in the human ear and also makes it easier to resolve Harmonic Complex Tones (HCTs), especially as they wiggle around in frequency. HCTs are sounds in which frequency components are multiples of a common fundamental frequency (f0). These are ubiquitous in  speech, music, reciprocating machinery, and animal vocalization. HCTs tend to move around in frequency. Hence a purturbation of f0 --> f0+del becomes a perturbation at the nth harmonic of fn=n*f0 --> fn'=n*(f0+del)=n*f0 + n*del=fn+n*del. On a regular spectrogram, this n*del extra jump results in very steep jumps at high frequency. These are blurred because of the spectrogram's constant frequency resolution. If frequency resolution is changed to resolve steep jumps, then temporal resolution suffers and lower frequency harmonics suffer, often beating together on the spectrogram. On a mel-scale however, log(f0) --> log(f0+del) and log(fn) --> log(n*(f0+del) = n*log(f0+del). This results in a more stable slope at each harmonic which can be resolved better for all frequencies at the proper resolution. 
+# Description: displays mel-scale frequency bin vs spectrogram-frame bin mel-spectrogram of audio waveform (i.e. a short-time fourier transform where frequencies are converted to the mel scale. Mel Scale is a logarithmic transformation of a signal's frequency. 
+#
+# Insights: This better mimics filters of the human ear and also makes it easier to resolve many Harmonic Complex Tones (HCTs) that wiggle around in frequency. HCTs are sounds in which frequency components are multiples of a common fundamental frequency (f0). These are ubiquitous in speech, music, reciprocating machinery, and animal vocalization. HCTs tend to move around in frequency. Hence a purturbation of f0 --> f0+del becomes a perturbation at the nth harmonic of fn=n*f0 --> fn'=n*(f0+del)=n*f0 + n*del=fn+n*del. On a regular spectrogram, this n*del extra jump results in very steep jumps at high frequency. These are blurred because of the spectrogram's constant frequency resolution. If frequency resolution is changed to resolve steep jumps, then temporal resolution suffers and lower frequency harmonics suffer, often beating together on the spectrogram. On a mel-scale however, log(f0) --> log(f0+del) and log(fn) --> log(n*(f0+del) = n*log(f0+del). This results in a more stable slope at each harmonic which can be resolved better for all frequencies at the proper resolution. Unfortunately, at high frequencies, the mel-scale compresses HCTs together and they can still become unresolved.  Hence mel-scale filtering (on its own) may not be optimal for all audio problems, especially if frequency resolution at high frequency is important. My intuition is that there is likely a piece of the physiology puzzle that we are missing or misunderstanding -- perhaps in the lateral lemniscus.
 #
 # Inputs [I] and outputs [O]:
 #   [I] waveform: waveform to play, e.g. from waveform, sample_rate = torchaudio.load(filepath)
@@ -203,7 +205,7 @@ def plot_specgram_experimental(waveform, sample_rate=16000, title="Spectrogram",
 #
 #
 
-def plot_mel_specgram(waveform, sample_rate=16000, title="Mel Spectrogram",xlabel='sample bin',ylabel='mel-frequency bin', 
+def plot_mel_specgram(waveform, sample_rate=16000, title="Mel Spectrogram",xlabel='frame bin',ylabel='mel-frequency bin', 
                       n_fft=1024, win_length=None,hop_length=512,center=True,pad_mode="reflect",
                       power=2.0,norm="slaney",onesided=True,n_mels=128,mel_scale="htk"):
 
@@ -230,5 +232,74 @@ def plot_mel_specgram(waveform, sample_rate=16000, title="Mel Spectrogram",xlabe
     figure.suptitle(title)
     axes.set_ylabel(ylabel)
     axes.set_xlabel(xlabel)
+    plt.show(block=False)
+
+    
+#----------------------------------------------------------
+#  plot_mel_specgram_vs_time 
+#
+# Description: same thing as plot_mel_specgram but plots vs time instead of vs spectrogram frame bin
+#
+# Inputs [I] and outputs [O]: see plot_mel_specgram for complete list. only additional inputs are listed here
+#   [I] secs_label_separation: number of seconds between spectrogram xtick labels (Default: 0.5 sec)
+#
+#   Example
+#       >>> waveform, sample_rate = torchaudio.load("test.wav")
+#       >>> plot_mel_specgram_vs_time(waveform, sample_rate=sample_rate,secs_label_separation=.33)  
+
+def plot_mel_specgram_vs_time(waveform, sample_rate=16000, title="Mel Spectrogram",xlabel='time (s)',
+                              ylabel='mel frequency bin', n_fft=1024, 
+                              win_length=None,hop_length=512,center=True,pad_mode="reflect",
+                              power=2.0,norm="slaney",onesided=True,n_mels=128,mel_scale="htk",
+                              secs_label_separation=.5):
+
+    mel_spectrogram = torchTransforms.MelSpectrogram(
+        sample_rate=sample_rate,
+        n_fft=n_fft,
+        win_length=win_length,
+        hop_length=hop_length,
+        center=center,
+        pad_mode=pad_mode,
+        power=power,
+        norm=norm,
+        n_mels=n_mels,
+        mel_scale=mel_scale,
+    )
+
+    melspec = mel_spectrogram(waveform)
+    melspec_dB = 10*np.log10(melspec[0]) #10*log10 of PSD, since PSD is power
+
+
+    n_mel_freq_bins = melspec.shape[1] #number of mel-frequency bins
+    n_frames = melspec.shape[2] #number spectrogram frames (not audio clip samples)
+    #nyquist_frequency = sample_rate / 2
+
+    # find time info
+    num_channels, num_samples = waveform.shape #single or duo channel audio, number of samples in audio clip
+    time_duration = num_samples/sample_rate #find total audio clip duration in seconds
+
+
+    #apply time labels (convert from frame bins to seconds)
+    n_xticks = int(time_duration / secs_label_separation + 1) #number of ticks to add with secs_label_separation separation
+    last_tick_in_secs = (n_xticks-1)*secs_label_separation #note: last tick could be before end of waveform
+
+    xtick_time_labels = np.linspace(0, last_tick_in_secs, n_xticks)
+    xtick_time_labels = np.array([round(x,2) for x in xtick_time_labels]) #make sure labels don't get too long
+
+    delta_t = time_duration / n_frames #time (secs) between spectrogram frames (not audio clip samples)
+    x_ticklocs =  xtick_time_labels / delta_t #bin locations of where to apply frequency labels
+
+
+    #make plot
+    #figure, axes = plt.subplots(num_channels, 1) #to do: more than 1 channel audio
+    figure, axes = plt.subplots(1, 1)
+
+    plt.imshow(melspec_dB, origin="lower", aspect="auto")
+    plt.xticks(x_ticklocs,xtick_time_labels)
+    #plt.yticks(y_ticklocs,ytick_melfrequency_labels) #to do?: something else for yticks is possible here
+    figure.suptitle(title)
+    axes.set_ylabel(ylabel)
+    axes.set_xlabel(xlabel)
+
     plt.show(block=False)
 
