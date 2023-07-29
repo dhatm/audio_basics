@@ -55,7 +55,9 @@ def play_audio(waveform, sample_rate):
     if num_channels == 1:
       display(Audio(waveform[0], rate=sample_rate))
     elif num_channels == 2:
-      display(Audio((waveform[0], waveform[1]), rate=sample_rate))
+      #display(Audio((waveform[0], waveform[1]), rate=sample_rate))
+      display(Audio(waveform[0], rate=sample_rate))
+      display(Audio(waveform[1], rate=sample_rate))
     else:
       raise ValueError("Waveform with more than 2 channels are not supported.")
 
@@ -117,13 +119,15 @@ def plot_waveform(waveform, sample_rate, title='waveform',xlabel='',ylabel=''):
 #   [I] sample_rate: sample_rate of waveform, e.g. from waveform, sample_rate = torchaudio.load(filepath)
 #   [I] n_fft (int, optional): Size of FFT, creates ``NFFT // 2 + 1`` bins. (Default: ``1024``)
 #   [I] hop_length (int or None, optional): Length of hop between STFT windows. (Default: ``512 (win_length // 2)``)
+#   [I] max_channels_show: max number of channels to plot. (Default: ``1``)
+#   [I] cmap: colormap to use (Default: ``'viridis'``). 'magma' is a popular one, and I like 'twilight_shifted'
 #
 #   Example
 #       >>> waveform, sample_rate = torchaudio.load("test.wav")
 #       >>> plot_specgram(waveform, sample_rate=sample_rate)  
 
 def plot_specgram(waveform, sample_rate, title="Spectrogram",xlabel='time (sec)',ylabel='frequency (Hz)',
-                  n_fft=1024, hop_length=512, max_channels_show=5, cmap='viridis'):
+                  n_fft=1024, hop_length=512, max_channels_show=1, cmap='viridis'):
     """plot_specgram
         Description: displays spectrogram time-frequency plots of single or duo channel input waveform
         Note: this uses the default psd on a dB scale to diplay the spectrogram
@@ -135,7 +139,7 @@ def plot_specgram(waveform, sample_rate, title="Spectrogram",xlabel='time (sec)'
           hop_length (int or None, optional): Length of hop between STFT windows. (Default: ``512 (win_length//2)``)
           xlabel: label for x-axis (Default: ``'time (sec)'``)
           ylabel: label for y-axis (Default: ``'frequency (Hz)'``)
-          max_channels_show: max number of channels to plot. (Default: ``5``)
+          max_channels_show: max number of channels to plot. (Default: ``1``)
           cmap: colormap to use (Default: ``'viridis'``). 'magma' is a popular one, and I like 'twilight_shifted'
        
        Example
@@ -606,7 +610,8 @@ def plot_mel_specgram_hz_vs_time(waveform, sample_rate=16000, title="Mel Spectro
         
        Args:
            see plot_mel_specgram_vs_time for complete list. only additional inputs are listed here
-           smallest_freq: smallest frequency to show on mel-spectrogram (Default: 500 Hz)
+           smallest_freq: smallest frequency to show on mel-spectrogram, i.e. shows from this to 
+             nyquist_frequency (Default: 500 Hz)
        
        Example
            $ waveform, sample_rate = torchaudio.load("test.wav")
