@@ -122,8 +122,8 @@ def plot_waveform(waveform, sample_rate, title='waveform',xlabel='',ylabel=''):
 #       >>> waveform, sample_rate = torchaudio.load("test.wav")
 #       >>> plot_specgram(waveform, sample_rate=sample_rate)  
 
-def plot_specgram(waveform, sample_rate, title="Spectrogram",xlabel='frequency (Hz)',ylabel='time (sec)',
-                  n_fft=1024, hop_length=512):
+def plot_specgram(waveform, sample_rate, title="Spectrogram",xlabel='time (sec)',ylabel='frequency (Hz)',
+                  n_fft=1024, hop_length=512, max_channels_show=5, cmap='viridis'):
     """plot_specgram
         Description: displays spectrogram time-frequency plots of single or duo channel input waveform
         Note: this uses the default psd on a dB scale to diplay the spectrogram
@@ -133,6 +133,10 @@ def plot_specgram(waveform, sample_rate, title="Spectrogram",xlabel='frequency (
           sample_rate: sample_rate of waveform, e.g. from waveform, sample_rate = torchaudio.load(filepath)
           n_fft (int, optional): Size of FFT, creates ``NFFT // 2 + 1`` bins. (Default: ``1024``)
           hop_length (int or None, optional): Length of hop between STFT windows. (Default: ``512 (win_length//2)``)
+          xlabel: label for x-axis (Default: ``'time (sec)'``)
+          ylabel: label for y-axis (Default: ``'frequency (Hz)'``)
+          max_channels_show: max number of channels to plot. (Default: ``5``)
+          cmap: colormap to use (Default: ``'viridis'``). 'magma' is a popular one, and I like 'twilight_shifted'
        
        Example
            $ waveform, sample_rate = torchaudio.load("test.wav")
@@ -147,12 +151,13 @@ def plot_specgram(waveform, sample_rate, title="Spectrogram",xlabel='frequency (
     waveform = waveform.numpy()
 
     num_channels, num_frames = waveform.shape
+    nplots = min(max_channels_show,num_channels)
 
-    figure, axes = plt.subplots(num_channels, 1)
-    if num_channels == 1:
+    figure, axes = plt.subplots(nplots, 1)
+    if nplots == 1:
         axes = [axes]
-    for c in range(num_channels):
-        axes[c].specgram(waveform[c], Fs=sample_rate, NFFT=n_fft, noverlap=hop_length)
+    for c in range(nplots):
+        axes[c].specgram(waveform[c], Fs=sample_rate, NFFT=n_fft, noverlap=hop_length, cmap=cmap)
         if ylabel:
             axes[c].set_ylabel(ylabel)
         #if num_channels > 1:
@@ -192,7 +197,7 @@ def plot_specgram(waveform, sample_rate, title="Spectrogram",xlabel='frequency (
 #
 def plot_specgram_experimental(waveform, sample_rate=16000, title="Spectrogram",xlabel='Frame',ylabel='Frequency Bin',
                   n_fft=1024, win_length=None,hop_length=512,center=True,pad_mode="reflect",
-                  power=2.0):
+                  power=2.0, cmap='viridis'):
     """plot_specgram_experimental
 
        Description: displays spectrogram time-frequency plots of audio waveform. This is experimental, to compare 
@@ -215,7 +220,8 @@ def plot_specgram_experimental(waveform, sample_rate=16000, title="Spectrogram",
               (Default: ``True``)
           pad_mode (string, optional): controls the padding method used when
                   :attr:`center` is ``True``. (Default: ``"reflect"``)
-          
+          cmap: colormap to use (Default: ``'viridis'``). 'magma' is a popular one, and I like 'twilight_shifted'
+
        Example
            $ waveform, sample_rate = torchaudio.load("test.wav")
            $ plot_specgram_experimental(waveform, sample_rate=sample_rate)  
@@ -242,7 +248,7 @@ def plot_specgram_experimental(waveform, sample_rate=16000, title="Spectrogram",
     #figure, axes = plt.subplots(num_channels, 1) #to do: more than 1 channel audio
     figure, axes = plt.subplots(1, 1)
     
-    plt.imshow(10*np.log10(spec[0]), origin="lower", aspect="auto")
+    plt.imshow(10*np.log10(spec[0]), origin="lower", aspect="auto", cmap=cmap)
     figure.suptitle(title)
     axes.set_ylabel(ylabel)
     axes.set_xlabel(xlabel)
@@ -305,7 +311,7 @@ def plot_specgram_experimental(waveform, sample_rate=16000, title="Spectrogram",
 
 def plot_mel_specgram(waveform, sample_rate=16000, title="Mel Spectrogram",xlabel='frame bin',ylabel='mel-frequency bin', 
                       n_fft=1024, win_length=None,hop_length=512,center=True,pad_mode="reflect",
-                      power=2.0,norm="slaney",onesided=True,n_mels=128,mel_scale="htk"):
+                      power=2.0,norm="slaney",onesided=True,n_mels=128,mel_scale="htk", cmap='viridis'):
     """plot_mel_specgram
       
        Description: displays mel-scale frequency bin vs spectrogram-frame bin mel-spectrogram of audio waveform 
@@ -349,6 +355,7 @@ def plot_mel_specgram(waveform, sample_rate=16000, title="Mel Spectrogram",xlabe
          norm (str or None, optional): If "slaney", divide the triangular mel weights by the width of the mel band
              (area normalization). (Default: ``"slaney"``)
          mel_scale (str, optional): Scale to use: ``htk`` or ``slaney``. (Default: ``htk``)
+         cmap: colormap to use (Default: ``'viridis'``). 'magma' is a popular one, and I like 'twilight_shifted'
          
        Example
            $ waveform, sample_rate = torchaudio.load("test.wav")
@@ -382,7 +389,7 @@ def plot_mel_specgram(waveform, sample_rate=16000, title="Mel Spectrogram",xlabe
     #figure, axes = plt.subplots(num_channels, 1) #to do: more than 1 channel audio
     figure, axes = plt.subplots(1, 1)
     
-    plt.imshow(melspec_dB, origin="lower", aspect="auto")
+    plt.imshow(melspec_dB, origin="lower", aspect="auto", cmap=cmap)
     figure.suptitle(title)
     axes.set_ylabel(ylabel)
     axes.set_xlabel(xlabel)
@@ -405,7 +412,7 @@ def plot_mel_specgram_vs_time(waveform, sample_rate=16000, title="Mel Spectrogra
                               ylabel='mel frequency bin', n_fft=1024, 
                               win_length=None,hop_length=512,center=True,pad_mode="reflect",
                               power=2.0,norm="slaney",onesided=True,n_mels=128,mel_scale="htk",
-                              secs_label_separation=.5):
+                              cmap='viridis', secs_label_separation=.5):
     """plot_mel_specgram_vs_time
       
        Description: same thing as plot_mel_specgram but plots vs time instead of vs spectrogram frame bin
@@ -466,7 +473,7 @@ def plot_mel_specgram_vs_time(waveform, sample_rate=16000, title="Mel Spectrogra
     #figure, axes = plt.subplots(num_channels, 1) #to do: more than 1 channel audio
     figure, axes = plt.subplots(1, 1)
 
-    plt.imshow(melspec_dB, origin="lower", aspect="auto")
+    plt.imshow(melspec_dB, origin="lower", aspect="auto", cmap=cmap)
     plt.xticks(x_ticklocs,xtick_time_labels)
     #plt.yticks(y_ticklocs,ytick_melfrequency_labels) #to do?: something else for yticks is possible here
     figure.suptitle(title)
@@ -590,7 +597,7 @@ def plot_mel_specgram_hz_vs_time(waveform, sample_rate=16000, title="Mel Spectro
                                  ylabel='frequency (Hz)', n_fft=1024, 
                                  win_length=None,hop_length=512,center=True,pad_mode="reflect",
                                  power=2.0,norm="slaney",onesided=True,n_mels=128,mel_scale="htk",
-                                 secs_label_separation=.5, smallest_freq=500):
+                                 cmap='viridis', secs_label_separation=.5, smallest_freq=500):
 
     """plot_mel_specgram_hz_vs_time
 
@@ -680,7 +687,7 @@ def plot_mel_specgram_hz_vs_time(waveform, sample_rate=16000, title="Mel Spectro
     #figure, axes = plt.subplots(num_channels, 1) #to do: more than 1 channel audio
     figure, axes = plt.subplots(1, 1)
 
-    plt.imshow(melspec_dB, origin="lower", aspect="auto")
+    plt.imshow(melspec_dB, origin="lower", aspect="auto", cmap=cmap)
     plt.xticks(x_ticklocs,xtick_time_labels)
     plt.yticks(y_ticklocs,ytick_labels)
     figure.suptitle(title)
