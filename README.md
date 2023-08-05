@@ -1,5 +1,5 @@
-# torchaudio_basics
-basic torchaudio data processing and analysis scripts and examples
+# audio_basics
+basic torchaudio and librosa data processing and analysis scripts and examples
 
 ## notebooks
 1. torchaudio_tools_tutorial.ipynb -- contains example audio i/o and analysis scripts, including ploting time-series, spectrograms, and mel-spectrograms
