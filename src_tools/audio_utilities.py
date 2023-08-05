@@ -132,13 +132,13 @@ def amplitude_to_dB(Amp, amin: float = 1e-10):
     Amp = np.asarray(Amp)
     
     if amin <= 0:
-        raise ParameterError("amin must be strictly positive")
+        amin = 1e-10
         
     if np.issubdtype(Amp.dtype, np.complexfloating):
         warnings.warn(
-            "power_to_db was called on complex input so phase "
+            "amplitude_to_dB was called on complex input so phase "
             "information will be discarded. To suppress this warning, "
-            "call power_to_db(np.abs(D)**2) instead.",
+            "call amplitude_to_dB(np.abs(D)) instead.",
             stacklevel=2,
         )
         magnitude = np.abs(Amp)
@@ -168,7 +168,7 @@ def amplitude_to_dB(Amp, amin: float = 1e-10):
 #       >>> plot_specgram(waveform, sample_rate=sample_rate)  
 
 def plot_specgram(waveform, sample_rate, title="Spectrogram",xlabel='time (sec)',ylabel='frequency (Hz)',
-                  n_fft=2048, hop_length=1024, max_channels_show=1, cmap='viridis'):
+                  n_fft=2048, noverlap=1024, max_channels_show=1, cmap='viridis'):
     """plot_specgram
         Description: displays spectrogram time-frequency plots of single or duo channel input waveform
         Note: this uses the default psd on a dB scale to diplay the spectrogram
@@ -177,7 +177,7 @@ def plot_specgram(waveform, sample_rate, title="Spectrogram",xlabel='time (sec)'
           waveform: waveform to play, e.g. from waveform, sample_rate = torchaudio.load(filepath)
           sample_rate: sample_rate of waveform, e.g. from waveform, sample_rate = torchaudio.load(filepath)
           n_fft (int, optional): Size of FFT, creates ``NFFT // 2 + 1`` bins. (Default: ``2048``)
-          hop_length (int or None, optional): Length of hop between STFT windows. (Default: ``1024 (win_length//2)``)
+          noverlap (int or None, optional): The number of points of overlap between blocks. (Default: ``1024 (win_length//2)``)
           xlabel: label for x-axis (Default: ``'time (sec)'``)
           ylabel: label for y-axis (Default: ``'frequency (Hz)'``)
           max_channels_show: max number of channels to plot. (Default: ``1``)
@@ -203,7 +203,7 @@ def plot_specgram(waveform, sample_rate, title="Spectrogram",xlabel='time (sec)'
     if nplots == 1:
         axes = [axes]
     for c in range(nplots):
-        axes[c].specgram(waveform[c], Fs=sample_rate, NFFT=n_fft, noverlap=(n_fft-hop_length), cmap=cmap)
+        axes[c].specgram(waveform[c], Fs=sample_rate, NFFT=n_fft, noverlap=noverlap, cmap=cmap)
         if ylabel:
             axes[c].set_ylabel(ylabel)
         #if num_channels > 1:
@@ -329,7 +329,7 @@ def power_to_dB(PowerSpec, amin: float = 1e-10):
     PowerSpec = np.asarray(PowerSpec)
     
     if amin <= 0:
-        raise ParameterError("amin must be strictly positive")
+        amin = 1e-10
         
     if np.issubdtype(PowerSpec.dtype, np.complexfloating):
         warnings.warn(
