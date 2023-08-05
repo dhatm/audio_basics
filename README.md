@@ -8,6 +8,7 @@ basic torchaudio data processing and analysis scripts and examples
 
 3. torchaudio_tools_tutorial.ipynb -- contains example audio i/o and analysis scripts, including ploting time-series, spectrograms, and mel-spectrograms for the Environmental Sound Classification 50 dataset
 
+4. librosa_tutorial.ipynb -- contains audio analysis examples with librosa
 
 
 
