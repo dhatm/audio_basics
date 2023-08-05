@@ -109,6 +109,47 @@ def plot_waveform(waveform, sample_rate, title='waveform',xlabel='',ylabel=''):
 
 
 #----------------------------------------------------------
+#  amplitude_to_dB 
+#
+# Description: Converts an amplitude (e.g., a spectrogram) to decibel (dB) units
+# 
+def amplitude_to_dB(Amp, amin: float = 1e-10):
+    """Converts an amplitude (e.g., a spectrogram) to decibel (dB) units
+
+    This computes the scaling ``20 * log10(S)`` in a numerically stable way.
+
+    Args:
+        Amp: amplitude signal, e.g., a spectrogram
+        amin: float > 0 [scalar].  minimum threshold for ``abs(S)`` 
+
+    Returns:
+        Amp_dB : ``Amp_db ~= 20 * log10(Amp)`` or equivalently ``Amp_db ~= 10 * log10(Amp**2)``
+
+    Example:
+        $ Amp_dB = amplitude_to_dB(Amp)
+    
+    """
+    Amp = np.asarray(Amp)
+    
+    if amin <= 0:
+        raise ParameterError("amin must be strictly positive")
+        
+    if np.issubdtype(Amp.dtype, np.complexfloating):
+        warnings.warn(
+            "power_to_db was called on complex input so phase "
+            "information will be discarded. To suppress this warning, "
+            "call power_to_db(np.abs(D)**2) instead.",
+            stacklevel=2,
+        )
+        magnitude = np.abs(Amp)
+    else:
+        magnitude = Amp
+
+    Amp_dB = 20.0 * np.log10(np.maximum(amin, magnitude))
+
+    return Amp_dB
+
+#----------------------------------------------------------
 # plot_specgram
 #
 # Description: displays spectrogram time-frequency plots of single or duo channel input waveform
@@ -127,7 +168,7 @@ def plot_waveform(waveform, sample_rate, title='waveform',xlabel='',ylabel=''):
 #       >>> plot_specgram(waveform, sample_rate=sample_rate)  
 
 def plot_specgram(waveform, sample_rate, title="Spectrogram",xlabel='time (sec)',ylabel='frequency (Hz)',
-                  n_fft=1024, hop_length=512, max_channels_show=1, cmap='viridis'):
+                  n_fft=2048, hop_length=1024, max_channels_show=1, cmap='viridis'):
     """plot_specgram
         Description: displays spectrogram time-frequency plots of single or duo channel input waveform
         Note: this uses the default psd on a dB scale to diplay the spectrogram
@@ -135,8 +176,8 @@ def plot_specgram(waveform, sample_rate, title="Spectrogram",xlabel='time (sec)'
        Args:
           waveform: waveform to play, e.g. from waveform, sample_rate = torchaudio.load(filepath)
           sample_rate: sample_rate of waveform, e.g. from waveform, sample_rate = torchaudio.load(filepath)
-          n_fft (int, optional): Size of FFT, creates ``NFFT // 2 + 1`` bins. (Default: ``1024``)
-          hop_length (int or None, optional): Length of hop between STFT windows. (Default: ``512 (win_length//2)``)
+          n_fft (int, optional): Size of FFT, creates ``NFFT // 2 + 1`` bins. (Default: ``2048``)
+          hop_length (int or None, optional): Length of hop between STFT windows. (Default: ``1024 (win_length//2)``)
           xlabel: label for x-axis (Default: ``'time (sec)'``)
           ylabel: label for y-axis (Default: ``'frequency (Hz)'``)
           max_channels_show: max number of channels to plot. (Default: ``1``)
@@ -157,11 +198,12 @@ def plot_specgram(waveform, sample_rate, title="Spectrogram",xlabel='time (sec)'
     num_channels, num_frames = waveform.shape
     nplots = min(max_channels_show,num_channels)
 
-    figure, axes = plt.subplots(nplots, 1)
+    #figure, axes = plt.subplots(nplots, 1)
+    figure, axes = plt.subplots(nplots, 1,figsize=(10, 4))
     if nplots == 1:
         axes = [axes]
     for c in range(nplots):
-        axes[c].specgram(waveform[c], Fs=sample_rate, NFFT=n_fft, noverlap=hop_length, cmap=cmap)
+        axes[c].specgram(waveform[c], Fs=sample_rate, NFFT=n_fft, noverlap=(n_fft-hop_length), cmap=cmap)
         if ylabel:
             axes[c].set_ylabel(ylabel)
         #if num_channels > 1:
@@ -200,7 +242,7 @@ def plot_specgram(waveform, sample_rate, title="Spectrogram",xlabel='time (sec)'
 #       >>> plot_specgram_experimental(waveform, sample_rate=sample_rate)  
 #
 def plot_specgram_experimental(waveform, sample_rate=16000, title="Spectrogram",xlabel='Frame',ylabel='Frequency Bin',
-                  n_fft=1024, win_length=None,hop_length=512,center=True,pad_mode="reflect",
+                  n_fft=2048, win_length=None,hop_length=1024,center=True,pad_mode="reflect",
                   power=2.0, cmap='viridis'):
     """plot_specgram_experimental
 
@@ -214,9 +256,9 @@ def plot_specgram_experimental(waveform, sample_rate=16000, title="Spectrogram",
           title (str, optional): title of plot. (Default: ``"Mel Spectrogram"``)
           xlabel (str, optional): x-axis label. (Default: ``""``)
           ylabel (str, optional): y-axis label. (Default: ``""``)
-          n_fft (int, optional): Size of FFT, creates ``n_fft // 2 + 1`` bins. (Default: ``1024``)
-          win_length (int or None, optional): Window size. (Default: ``None``)
-          hop_length (int or None, optional): Length of hop between STFT windows. (Default: ``512 (win_length//2)``)
+          n_fft (int, optional): Size of FFT, creates ``n_fft // 2 + 1`` bins. (Default: ``2048``)
+          win_length (int or None, optional): Window size. (Default: ``None`` i.e., n_fft)
+          hop_length (int or None, optional): Length of hop between STFT windows. (Default: ``1024 (win_length//2)``)
           power (float, optional): Exponent for the magnitude spectrogram,
             (must be > 0) e.g., 1 for energy, 2 for power, etc. (Default: ``2``)
           center (bool, optional): whether to pad :attr:`waveform` on both sides so
@@ -250,9 +292,11 @@ def plot_specgram_experimental(waveform, sample_rate=16000, title="Spectrogram",
 
     num_channels, num_frames = waveform.shape
     #figure, axes = plt.subplots(num_channels, 1) #to do: more than 1 channel audio
-    figure, axes = plt.subplots(1, 1)
-    
-    plt.imshow(10*np.log10(spec[0]), origin="lower", aspect="auto", cmap=cmap)
+    #figure, axes = plt.subplots(1, 1)
+    figure, axes = plt.subplots(1, 1,figsize=(10, 4))
+    plt.imshow(amplitude_to_dB(spec[0]), origin="lower", aspect="auto", cmap=cmap)    
+    #spec_dB = torchTransforms.AmplitudeToDB(top_db=80, stype = "amplitude")(spec[0]) #another option is to use this
+    #plt.imshow(spec_dB, origin="lower", aspect="auto", cmap=cmap)
     figure.suptitle(title)
     axes.set_ylabel(ylabel)
     axes.set_xlabel(xlabel)
@@ -262,11 +306,53 @@ def plot_specgram_experimental(waveform, sample_rate=16000, title="Spectrogram",
 
 
 #----------------------------------------------------------
+#  power_to_dB 
+#
+# Description: Converts a power spectrogram (amplitude squared) to decibel (dB) units
+# 
+def power_to_dB(PowerSpec, amin: float = 1e-10):
+    """Convert a power spectrogram (amplitude squared) to decibel (dB) units
+
+    This computes the scaling ``10 * log10(S)`` in a numerically stable way.
+
+    Args:
+        PowerSpec: power spectrogram
+        amin: float > 0 [scalar].  minimum threshold for ``abs(S)`` 
+
+    Returns:
+        PowerSpec_dB : ``PowerSpec_db ~= 10 * log10(PowerSpec)``
+
+    Example:
+        $ PowerSpec_dB = power_to_dB(PowerSpec)
+    
+    """
+    PowerSpec = np.asarray(PowerSpec)
+    
+    if amin <= 0:
+        raise ParameterError("amin must be strictly positive")
+        
+    if np.issubdtype(PowerSpec.dtype, np.complexfloating):
+        warnings.warn(
+            "power_to_db was called on complex input so phase "
+            "information will be discarded. To suppress this warning, "
+            "call power_to_db(np.abs(D)**2) instead.",
+            stacklevel=2,
+        )
+        magnitude = np.abs(PowerSpec)
+    else:
+        magnitude = PowerSpec
+
+    PowerSpec_dB = 10.0 * np.log10(np.maximum(amin, magnitude))
+
+    return PowerSpec_dB
+
+
+#----------------------------------------------------------
 # plot_mel_specgram
 #
 # Description: displays mel-scale frequency bin vs spectrogram-frame bin mel-spectrogram of audio waveform 
 #   (i.e. a short-time fourier transform where frequencies are converted to the mel scale. Mel Scale is a 
-#   logarithmic transformation of a signal's frequency. 
+#   logarithmic transformation of a signal's frequency). 
 #
 # Insights: This somewhat mimics the human ear and also makes it easier to resolve many Harmonic Complex 
 #   Tones (HCTs) that wiggle around in frequency. HCTs are sounds in which frequency components are multiples 
@@ -314,7 +400,7 @@ def plot_specgram_experimental(waveform, sample_rate=16000, title="Spectrogram",
 #
 
 def plot_mel_specgram(waveform, sample_rate=16000, title="Mel Spectrogram",xlabel='frame bin',ylabel='mel-frequency bin', 
-                      n_fft=1024, win_length=None,hop_length=512,center=True,pad_mode="reflect",
+                      n_fft=2048, win_length=None,hop_length=1024,center=True,pad_mode="reflect",
                       power=2.0,norm="slaney",onesided=True,n_mels=128,mel_scale="htk", cmap='viridis'):
     """plot_mel_specgram
       
@@ -345,9 +431,9 @@ def plot_mel_specgram(waveform, sample_rate=16000, title="Mel Spectrogram",xlabe
          title (str, optional): title of plot. (Default: ``"Mel Spectrogram"``)
          xlabel (str, optional): x-axis label. (Default: ``""``)
          ylabel (str, optional): y-axis label. (Default: ``""``)
-         n_fft (int, optional): Size of FFT, creates ``n_fft // 2 + 1`` bins. (Default: ``1024``)
-         win_length (int or None, optional): Window size. (Default: ``None``)
-         hop_length (int or None, optional): Length of hop between STFT windows. (Default: ``512 (win_length//2)``)
+         n_fft (int, optional): Size of FFT, creates ``n_fft // 2 + 1`` bins. (Default: ``2048``)
+         win_length (int or None, optional): Window size. (Default: ``None`` i.e. n_fft)
+         hop_length (int or None, optional): Length of hop between STFT windows. (Default: ``1024 (win_length//2)``)
          n_mels (int, optional): Number of mel filterbanks. (Default: ``128``)
          power (float, optional): Exponent for the magnitude spectrogram,
              (must be > 0) e.g., 1 for energy, 2 for power, etc. (Default: ``2``)
@@ -385,13 +471,15 @@ def plot_mel_specgram(waveform, sample_rate=16000, title="Mel Spectrogram",xlabe
     )
 
     melspec = mel_spectrogram(waveform)
-    melspec_dB = 10*np.log10(melspec[0]) #10*log10 of PSD, since PSD is power
-    #melspec_dB = torchTransforms.AmplitudeToDB(top_db=80)(melspec) #another option is to use this
+    #melspec_dB = power_to_dB(melspec[0]) #make into dB: 10*log10 of PSD, since PSD is power
+    melspec_dB = torchTransforms.AmplitudeToDB(top_db=80, stype = "power")(melspec[0]) #another option is to use this
+
 
 
     num_channels, num_frames = waveform.shape
     #figure, axes = plt.subplots(num_channels, 1) #to do: more than 1 channel audio
-    figure, axes = plt.subplots(1, 1)
+    #figure, axes = plt.subplots(1, 1)
+    figure, axes = plt.subplots(1, 1,figsize=(10, 4))
     
     plt.imshow(melspec_dB, origin="lower", aspect="auto", cmap=cmap)
     figure.suptitle(title)
@@ -399,7 +487,8 @@ def plot_mel_specgram(waveform, sample_rate=16000, title="Mel Spectrogram",xlabe
     axes.set_xlabel(xlabel)
     plt.show(block=False)
 
-    
+                              
+                              
 #----------------------------------------------------------
 #  plot_mel_specgram_vs_time 
 #
@@ -413,8 +502,8 @@ def plot_mel_specgram(waveform, sample_rate=16000, title="Mel Spectrogram",xlabe
 #       >>> plot_mel_specgram_vs_time(waveform, sample_rate=sample_rate,secs_label_separation=.33)  
 
 def plot_mel_specgram_vs_time(waveform, sample_rate=16000, title="Mel Spectrogram",xlabel='time (s)',
-                              ylabel='mel frequency bin', n_fft=1024, 
-                              win_length=None,hop_length=512,center=True,pad_mode="reflect",
+                              ylabel='mel frequency bin', n_fft=2048, 
+                              win_length=None,hop_length=1024,center=True,pad_mode="reflect",
                               power=2.0,norm="slaney",onesided=True,n_mels=128,mel_scale="htk",
                               cmap='viridis', secs_label_separation=.5):
     """plot_mel_specgram_vs_time
@@ -449,8 +538,8 @@ def plot_mel_specgram_vs_time(waveform, sample_rate=16000, title="Mel Spectrogra
     )
 
     melspec = mel_spectrogram(waveform)
-    melspec_dB = 10*np.log10(melspec[0]) #10*log10 of PSD, since PSD is power
-    #melspec_dB = torchTransforms.AmplitudeToDB(top_db=80)(melspec) #another option is to use this
+    #melspec_dB = power_to_dB(melspec[0]) #make into dB: 10*log10 of PSD, since PSD is power
+    melspec_dB = torchTransforms.AmplitudeToDB(top_db=80, stype = "power")(melspec[0]) #another option is to use this
 
 
     n_mel_freq_bins = melspec.shape[1] #number of mel-frequency bins
@@ -475,7 +564,9 @@ def plot_mel_specgram_vs_time(waveform, sample_rate=16000, title="Mel Spectrogra
 
     #make plot
     #figure, axes = plt.subplots(num_channels, 1) #to do: more than 1 channel audio
-    figure, axes = plt.subplots(1, 1)
+    #figure, axes = plt.subplots(1, 1)
+    figure, axes = plt.subplots(1, 1,figsize=(10, 4))
+    
 
     plt.imshow(melspec_dB, origin="lower", aspect="auto", cmap=cmap)
     plt.xticks(x_ticklocs,xtick_time_labels)
@@ -598,8 +689,8 @@ def find_first_idx_greater_than_x(tensor_array,val):
 #
 
 def plot_mel_specgram_hz_vs_time(waveform, sample_rate=16000, title="Mel Spectrogram",xlabel='time (s)',
-                                 ylabel='frequency (Hz)', n_fft=1024, 
-                                 win_length=None,hop_length=512,center=True,pad_mode="reflect",
+                                 ylabel='frequency (Hz)', n_fft=2048, 
+                                 win_length=None,hop_length=1024,center=True,pad_mode="reflect",
                                  power=2.0,norm="slaney",onesided=True,n_mels=128,mel_scale="htk",
                                  cmap='viridis', secs_label_separation=.5, smallest_freq=500):
 
@@ -637,7 +728,8 @@ def plot_mel_specgram_hz_vs_time(waveform, sample_rate=16000, title="Mel Spectro
     )
 
     melspec = mel_spectrogram(waveform)
-    melspec_dB = 10*np.log10(melspec[0]) #make into dB: 10*log10 of PSD, since PSD is power
+    #melspec_dB = power_to_dB(melspec[0]) #make into dB: 10*log10 of PSD, since PSD is power
+    melspec_dB = torchTransforms.AmplitudeToDB(top_db=80, stype = "power")(melspec[0]) #another option is to use this
     
     #------------------------
     # find ancillary parameters to use below
@@ -690,7 +782,8 @@ def plot_mel_specgram_hz_vs_time(waveform, sample_rate=16000, title="Mel Spectro
     #make plot
     
     #figure, axes = plt.subplots(num_channels, 1) #to do: more than 1 channel audio
-    figure, axes = plt.subplots(1, 1)
+    #figure, axes = plt.subplots(1, 1)
+    figure, axes = plt.subplots(1, 1,figsize=(10, 4))
 
     plt.imshow(melspec_dB, origin="lower", aspect="auto", cmap=cmap)
     plt.xticks(x_ticklocs,xtick_time_labels)
